@@ -41,14 +41,17 @@ OTHER_LIB = -L$(CUDA_HOME)/lib64 -lcudart
 OTHER_INCLUDE = -I$(CUDA_HOME)/include
 
 ### CUDA targets
-
-NVCC_FLAGS += -DMAXATOMS=$(MAXATOMS)
-# support sm20 & sm35
-NVCC_FLAGS += -gencode arch=compute_35,code=compute_35 --ptxas-options=-v -lineinfo
-NVCC_FLAGS += -gencode arch=compute_20,code=compute_20 --ptxas-options=-v -lineinfo
-
 # set up nvcc compiler path
 NVCC = $(CUDA_HOME)/bin/nvcc
+
+# nvcc-specific options
+NVCC_FLAGS += -DMAXATOMS=$(MAXATOMS)
+NVCC_FLAGS += --ptxas-options=-v -lineinfo
+
+# add support for various cuda architectures below
+NVCC_FLAGS += -gencode arch=compute_20,code=sm_20
+NVCC_FLAGS += -gencode arch=compute_35,code=sm_35
+NVCC_FLAGS += -gencode arch=compute_52,code=sm_52
 
 # add precision flag for CUDA targets
 ifeq ($(DOUBLE_PRECISION), ON)
