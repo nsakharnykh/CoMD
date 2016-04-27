@@ -278,6 +278,7 @@ void warp_reduce(real_t &ifx, real_t &ify, real_t &ifz, real_t &ie, real_t &irho
 }
 
 // emulate atomic add for doubles
+#if (__CUDACC_VER_MAJOR__ < 8)
 __device__ inline void atomicAdd(double *address, double value)
 {
   unsigned long long oldval, newval, readback;
@@ -289,6 +290,7 @@ __device__ inline void atomicAdd(double *address, double value)
     newval = __double_as_longlong(__longlong_as_double(oldval) + value);
   }
 }
+#endif
 
 static __device__ __forceinline__ int get_warp_id()
 {
