@@ -145,15 +145,15 @@ __global__ void UpdateLinkCells(SimGpu sim, LinkCellGpu cells, int *flags)
   assert(iOff < sim.boxes.nLocalBoxes * MAXATOMS && iOff >=0 );
 
   int jBox = getBoxFromCoord(cells, sim.atoms.r.x[iOff], sim.atoms.r.y[iOff], sim.atoms.r.z[iOff]);
-  
+
   if (jBox != iBox) {
     // find new position in jBox list
     int jAtom = atomicAdd(&sim.boxes.nAtoms[jBox], 1);
     assert(jAtom < MAXATOMS);
     int jOff = jBox * MAXATOMS + jAtom;
     assert(jOff < sim.boxes.nTotalBoxes * MAXATOMS && jOff >=0 );
-    
-    // flag set/unset   
+
+    // flag set/unset
     flags[jOff] = tid+1; //TODO: Why do we set this value to tid+1, wouldn't '1' suffice? (ask Nikolai)
     flags[iOff] = 0;
 
@@ -196,7 +196,7 @@ __global__ void CompactAtoms(SimGpu sim, int num_cells, int *flags)
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   __shared__ int natoms[THREAD_ATOM_CTA];
   natoms[threadIdx.x] = 0;
-  
+
   int jAtom = 0;
   if (tid < num_cells) {
     int iBox = tid;
@@ -233,14 +233,14 @@ __global__ void CompactAtoms(SimGpu sim, int num_cells, int *flags)
   }
 
   __syncthreads();
- 
+
   for (int i = THREAD_ATOM_CTA / 2; i >= 32; i /= 2) {
     if (threadIdx.x < i) {
       natoms[threadIdx.x] = max(natoms[threadIdx.x], natoms[threadIdx.x + i]);
     }
     __syncthreads();
   }
- 
+
     // reduce in warp
   if (threadIdx.x < 32) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
@@ -278,12 +278,12 @@ __global__ void UpdateNeighborAtomIndices(SimGpu sim, int num_cells, int *cell_l
   __shared__ real_t ncell[N_MAX_NEIGHBORS];
   __shared__ real_t natoms[N_MAX_NEIGHBORS];
   __shared__ real_t npos[N_MAX_NEIGHBORS];
-  if (threadIdx.x < N_MAX_NEIGHBORS) { 
+  if (threadIdx.x < N_MAX_NEIGHBORS) {
     int j = threadIdx.x;
     int jBox = sim.neighbor_cells[iBox * N_MAX_NEIGHBORS + j];
     ncell[j] = jBox;
     natoms[j] = sim.boxes.nAtoms[jBox];
-    npos[j] = scan[iBox * N_MAX_NEIGHBORS + j]; 
+    npos[j] = scan[iBox * N_MAX_NEIGHBORS + j];
   }
 
   __syncthreads();
@@ -294,7 +294,7 @@ __global__ void UpdateNeighborAtomIndices(SimGpu sim, int num_cells, int *cell_l
   while (j < N_MAX_NEIGHBORS) {
     while (j < N_MAX_NEIGHBORS && natoms[j] <= local_index) { local_index -= natoms[j]; j++; }
     if (j < N_MAX_NEIGHBORS) {
-      int pos = iBox * N_MAX_NEIGHBORS * MAXATOMS + npos[j] + local_index; 
+      int pos = iBox * N_MAX_NEIGHBORS * MAXATOMS + npos[j] + local_index;
       sim.neighbor_atoms[pos] = ncell[j] * MAXATOMS + local_index;
       local_index += blockDim.x;
     }
@@ -304,7 +304,7 @@ __global__ void UpdateNeighborAtomIndices(SimGpu sim, int num_cells, int *cell_l
   int pos = scan[iBox * N_MAX_NEIGHBORS + j];
   int num = sim.num_atoms[jBox];
 
-  if (lane_id < num) 
+  if (lane_id < num)
     sim.neighbor_atoms[iBox * N_MAX_NEIGHBORS * MAXATOMS + pos + lane_id] = jBox * MAXATOMS + lane_id;
 */
 }
@@ -316,7 +316,7 @@ __global__ void UpdateNeighborNumAtoms(SimGpu sim, int num_cells, int *cell_list
   if (tid >= num_cells) return;
 
   int iBox = tid;
-  if (cell_list != NULL) 
+  if (cell_list != NULL)
     iBox = cell_list[tid];
 
   int num_neigh = 0;
@@ -366,12 +366,12 @@ __global__ void UpdateBoundaryList(SimGpu sim, AtomListGpu list, int nCells, int
 
 /// Packs all atoms of all cells provided by gpu_cells into a single buffer (compact_atoms) in a compact manner.
 /// @param [in] cellIDs stores the cell IDs of all the cell we want to extract the particles from
-/// @param [in] nCells 
-/// @param [in] sim 
-/// @param [in] cellOffset 
-/// @param [in] shift_x 
-/// @param [in] shift_y 
-/// @param [in] shift_z 
+/// @param [in] nCells
+/// @param [in] sim
+/// @param [in] cellOffset
+/// @param [in] shift_x
+/// @param [in] shift_y
+/// @param [in] shift_z
 /// @param [out] compact_atoms data structure to store the compacted atoms
 __global__ void LoadAtomsBufferPacked(AtomMsgSoA compactAtoms, int *cellIDs, SimGpu sim_gpu, int *cellOffset, real_t shift_x, real_t shift_y, real_t shift_z)
 {
@@ -383,7 +383,7 @@ __global__ void LoadAtomsBufferPacked(AtomMsgSoA compactAtoms, int *cellIDs, Sim
   int iBox = cellIDs[iCell];
   int ii = iBox * MAXATOMS + iAtom;
 
-  if (iAtom < sim_gpu.boxes.nAtoms[iBox]) 
+  if (iAtom < sim_gpu.boxes.nAtoms[iBox])
   {
     int iBuf = cellOffset[iCell] + iAtom;
 
@@ -402,7 +402,7 @@ __global__ void LoadAtomsBufferPacked(AtomMsgSoA compactAtoms, int *cellIDs, Sim
 
 /// @param [out] boxId Stores the boxId for each received particle
 /// @param [in] nBuf number of received particles
-__global__ void computeBoxIds(LinkCellGpu cells, vec_t r, 
+__global__ void computeBoxIds(LinkCellGpu cells, vec_t r,
                                                  int *boxId, int nBuf)
 {
         int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -478,11 +478,12 @@ __global__ void updateNAtoms(int *nAtoms, int *boxId, int nBuf)
         }
 }
 
-void computeOffsets(int nlUpdateRequired, SimFlat* sim, 
+void computeOffsets(int nlUpdateRequired, SimFlat* sim,
                                         vec_t r,
                                         int* d_iOffset, int* d_boxId,
                                         int nBuf, cudaStream_t stream)
-{  
+{
+  if (nBuf == 0) return;
   int grid = (nBuf + (THREAD_ATOM_CTA-1)) / THREAD_ATOM_CTA;
   int block = THREAD_ATOM_CTA;
   // computeBoxIds(), compute, ... are required to assure sequential ordering!
@@ -498,7 +499,7 @@ void computeOffsets(int nlUpdateRequired, SimFlat* sim,
         computeOffsetsUpdateReq<0><<<grid, block, 0, stream>>>(d_iOffset, nBuf, sim->gpu.boxes.nAtoms, d_boxId, sim->gpu);
      }
      //update nAtoms
-     updateNAtoms<<<grid, block, 0, stream>>>(sim->gpu.boxes.nAtoms,d_boxId, nBuf); 
+     updateNAtoms<<<grid, block, 0, stream>>>(sim->gpu.boxes.nAtoms,d_boxId, nBuf);
   }else{
      //updates nAtoms and filles d_iOffset with the proper iOffs (read from hashTable)
      computeOffsetsNoUpdateReq<<<grid, block, 0, stream>>>(d_iOffset, nBuf, sim->gpu.boxes.nAtoms, sim->gpu.d_hashTable);
@@ -531,7 +532,7 @@ __global__ void UpdateCompactIndices(int *cell_indices, int nLocalBoxes, SimGpu 
   int iBox = tid / MAXATOMS;
   int iAtom = tid % MAXATOMS;
 
-  if (iBox < nLocalBoxes && iAtom < sim.boxes.nAtoms[iBox]) 
+  if (iBox < nLocalBoxes && iAtom < sim.boxes.nAtoms[iBox])
   {
     int iAtom = tid % MAXATOMS;
     int id = cell_indices[iBox] + iAtom;
@@ -607,7 +608,7 @@ __global__ void SetLinearIndices(SimGpu sim, int nLocalBoxes, int nTotalBoxes, i
 
   int iBox = nLocalBoxes + tid / MAXATOMS;
   int iAtom = tid % MAXATOMS;
-  
+
   if (iBox < nTotalBoxes) {
     if (iAtom < sim.boxes.nAtoms[iBox]) {
       int iOff = iBox * MAXATOMS + iAtom;
@@ -622,7 +623,7 @@ __global__ void SortAtomsByGlobalId(SimGpu sim, int nTotalBoxes, int *new_indice
 {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int iBox = tid;
-  
+
   if (iBox < nTotalBoxes) {
     int natoms = sim.num_atoms[iBox];
     for (int i = 0; i < natoms; i++) {
@@ -643,7 +644,7 @@ __device__ void bottomUpMerge(int *gid, int *A, int iLeft, int iRight, int iEnd,
   int i1 = iRight;
 
   for (int j = iLeft; j < iEnd; j++) {
-    if (i0 < iRight && (i1 >= iEnd || gid[A[i0]] <= gid[A[i1]])) {   
+    if (i0 < iRight && (i1 >= iEnd || gid[A[i0]] <= gid[A[i1]])) {
       B[j] = A[i0];
       i0++;
     }
@@ -662,8 +663,8 @@ __global__ void SortAtomsByGlobalId(SimGpu sim, int nLocalBoxes, int nTotalBoxes
   int iBox;
   if (tid >= nBoundaryCells) iBox = nLocalBoxes + tid - nBoundaryCells;
     else iBox = boundary_cells[tid];
-  
-  if (iBox < nTotalBoxes && new_indices[iBox * MAXATOMS] >= 0) 
+
+  if (iBox < nTotalBoxes && new_indices[iBox * MAXATOMS] >= 0)
   {
     int n = sim.boxes.nAtoms[iBox];
     int *A = new_indices + iBox * MAXATOMS;
@@ -680,7 +681,7 @@ __global__ void SortAtomsByGlobalId(SimGpu sim, int nLocalBoxes, int nTotalBoxes
       swap(A, B);
       // now A is full of runs of length 2*width
     }
-    
+
     // copy to B just in case it is new_indices array
     // TODO: avoid this copy?
     for (int i = 0; i < n; i++)
@@ -694,7 +695,7 @@ __global__ void ShuffleAtomsData(SimGpu sim, int nLocalBoxes, int nTotalBoxes, i
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 300
   __shared__ volatile real_t shfl_mem[THREAD_ATOM_CTA];		// assuming block size = THREAD_ATOM_CTA
 #endif
- 
+
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   int warp_id = tid / WARP_SIZE;
@@ -724,7 +725,7 @@ __global__ void ShuffleAtomsData(SimGpu sim, int nLocalBoxes, int nTotalBoxes, i
   }
 
   int idx;
-  if (iAtom < sim.boxes.nAtoms[iBox]) 
+  if (iAtom < sim.boxes.nAtoms[iBox])
     idx = new_indices[iOff] - iBox * MAXATOMS;
 
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 300
