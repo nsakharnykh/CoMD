@@ -278,7 +278,7 @@ void warp_reduce(real_t &ifx, real_t &ify, real_t &ifz, real_t &ie, real_t &irho
 }
 
 // emulate atomic add for doubles
-#if (__CUDACC_VER_MAJOR__ < 8)
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
 __device__ inline void atomicAdd(double *address, double value)
 {
   unsigned long long oldval, newval, readback;
